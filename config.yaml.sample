@@ -1,0 +1,11 @@
+rss_url: "https://url-flux-rss.com/"
+
+bluesky:
+  handle: "identifiant bluesky"
+  password: "mot de passe bluesky"
+  
+post:
+  hashtag: "#ActuDeMonFluxRSS"
+
+cache:
+  file: "rss_cache.json"
