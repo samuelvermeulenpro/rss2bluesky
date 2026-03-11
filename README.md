@@ -4,7 +4,7 @@
 - Python >= 3.x
 - pip3
 - feedparser
-- atproro
+- atproto
 - yaml
 
 ## Configuration
