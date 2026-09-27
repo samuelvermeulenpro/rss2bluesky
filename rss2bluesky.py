@@ -30,12 +30,21 @@ def save_cache(data):
     with open(CACHE_FILE, "w") as f:
         json.dump(data, f)
 
+def byte_slice(text, substring):
+    """Renvoie (byteStart, byteEnd) de substring dans text.
+
+    Bluesky attend des positions en octets UTF-8, pas en caractères :
+    un caractère accentué (é, à...) occupe 2 octets.
+    """
+    start = len(text[:text.index(substring)].encode("utf-8"))
+    return start, start + len(substring.encode("utf-8"))
+
+
 def create_facets(text, url, hashtag):
     facets = []
 
     # Facet pour le lien
-    start_url = text.index(url)
-    end_url = start_url + len(url)
+    start_url, end_url = byte_slice(text, url)
 
     facets.append(
         models.AppBskyRichtextFacet.Main(
@@ -51,8 +60,7 @@ def create_facets(text, url, hashtag):
 
     # Facet pour le hashtag
     if hashtag in text:
-        start_tag = text.index(hashtag)
-        end_tag = start_tag + len(hashtag)
+        start_tag, end_tag = byte_slice(text, hashtag)
 
         facets.append(
             models.AppBskyRichtextFacet.Main(
