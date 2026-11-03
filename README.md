@@ -1,4 +1,4 @@
-**Publiez l’article le plus récent d’un flux RSS sur votre timeline Bluesky**
+**Publiez l’article le plus récent d’un ou plusieurs flux RSS sur votre timeline Bluesky**
 
 ## Pré-requis 
 - Python >= 3.x
@@ -9,7 +9,17 @@
 
 ## Configuration
 - Renommez le fichier de Configuration en `config.yaml` en retirant ".sample"
-- Editez selon les paramètres de votre compte Bluesky et Flux RSS
+- Editez selon les paramètres de votre compte Bluesky et de vos flux RSS
+- Plusieurs flux peuvent être listés sous `feeds:`, chacun avec un hashtag optionnel :
+
+  ```yaml
+  feeds:
+    - "https://url-flux-rss.com/"          # utilise post.hashtag
+    - url: "https://autre-flux-rss.com/feed"
+      hashtag: "#AutreFlux"
+  ```
+
+  L’ancien format `rss_url: "..."` (un seul flux) reste supporté.
 
 ## Installation
 - Installez Python3

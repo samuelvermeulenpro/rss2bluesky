@@ -1,10 +1,17 @@
-rss_url: "https://url-flux-rss.com/"
+# Liste des flux RSS à surveiller.
+# Chaque entrée peut être une simple URL (hashtag par défaut)
+# ou un objet avec une URL et un hashtag propre au flux.
+feeds:
+  - "https://url-flux-rss.com/"
+  - url: "https://autre-flux-rss.com/feed"
+    hashtag: "#AutreFlux"
 
 bluesky:
   handle: "identifiant bluesky"
   password: "mot de passe bluesky"
   
 post:
+  # Hashtag par défaut, utilisé pour les flux sans hashtag dédié
   hashtag: "#ActuDeMonFluxRSS"
 
 cache:
