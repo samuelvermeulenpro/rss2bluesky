@@ -19,14 +19,15 @@ CACHE_FILE = os.path.join(SCRIPT_DIR, CONFIG["cache"]["file"])
 
 
 def load_feeds():
-    """Renvoie la liste des flux sous forme de dicts {url, hashtag}.
+    """Renvoie la liste des flux sous forme de dicts {url, hashtag, count}.
 
     Formats acceptés dans config.yaml :
       - rss_url: "https://..."            (ancien format, un seul flux)
       - feeds:
-          - "https://..."                  (hashtag par défaut)
+          - "https://..."                  (hashtag par défaut, 1 item)
           - url: "https://..."
             hashtag: "#MonHashtag"         (hashtag propre au flux)
+            count: 3                       (nombre d'items récents à publier)
     """
     raw = CONFIG.get("feeds")
     if raw is None and "rss_url" in CONFIG:
@@ -37,18 +38,29 @@ def load_feeds():
     feeds = []
     for item in raw:
         if isinstance(item, str):
-            feeds.append({"url": item, "hashtag": DEFAULT_HASHTAG})
+            feeds.append({"url": item, "hashtag": DEFAULT_HASHTAG, "count": 1})
         else:
+            count = item.get("count", 1)
+            if not isinstance(count, int) or isinstance(count, bool) or count < 1:
+                raise SystemExit(
+                    f"'count' invalide pour {item['url']} : {count!r} "
+                    "(entier >= 1 attendu)."
+                )
             feeds.append({
                 "url": item["url"],
                 "hashtag": item.get("hashtag", DEFAULT_HASHTAG),
+                "count": count,
             })
     return feeds
 
 
 # Script
 def load_cache(feeds):
-    """Cache : {url_du_flux: dernier_id_publié}."""
+    """Cache : {url_du_flux: [ids_publiés]}.
+
+    Une valeur chaîne (ancien format : dernier id publié) est conservée
+    telle quelle et interprétée par published_ids().
+    """
     if not os.path.exists(CACHE_FILE):
         return {}
     with open(CACHE_FILE, "r") as f:
@@ -57,6 +69,20 @@ def load_cache(feeds):
     if "last_id" in data and len(data) == 1:
         return {feeds[0]["url"]: data["last_id"]} if feeds else {}
     return data
+
+
+def published_ids(cached, entries):
+    """Ensemble des ids déjà publiés parmi entries (du plus récent au plus ancien)."""
+    if cached is None:
+        return set()
+    if isinstance(cached, str):
+        # Ancien format : seul le dernier id publié est connu. On considère
+        # cet article et tous les plus anciens comme déjà publiés.
+        ids = [e.get("id", e.link) for e in entries]
+        if cached in ids:
+            return set(ids[ids.index(cached):])
+        return {cached}
+    return set(cached)
 
 
 def save_cache(data):
@@ -129,6 +155,7 @@ def main():
     for feed_conf in feeds:
         rss_url = feed_conf["url"]
         hashtag = feed_conf["hashtag"]
+        count = feed_conf["count"]
 
         try:
             feed = feedparser.parse(rss_url)
@@ -136,25 +163,36 @@ def main():
                 print(f"[{rss_url}] Aucun article trouvé")
                 continue
 
-            entry = feed.entries[0]
-            entry_id = entry.get("id", entry.link)
+            all_ids = [e.get("id", e.link) for e in feed.entries]
+            done = published_ids(cache.get(rss_url), feed.entries)
 
-            if entry_id == cache.get(rss_url):
+            # Les `count` items les plus récents non encore publiés,
+            # publiés du plus ancien au plus récent pour garder l'ordre
+            # chronologique sur la timeline.
+            todo = [
+                (e, eid)
+                for e, eid in zip(feed.entries[:count], all_ids[:count])
+                if eid not in done
+            ]
+            todo.reverse()
+
+            if not todo:
                 print(f"[{rss_url}] Déjà publié")
                 continue
-
-            text, facets = build_post(entry, hashtag)
 
             if client is None:
                 client = Client()
                 client.login(BLUESKY_HANDLE, BLUESKY_PASSWORD)
 
-            client.send_post(text=text, facets=facets)
-
-            cache[rss_url] = entry_id
-            save_cache(cache)
-
-            print(f"[{rss_url}] Publié :", entry.title)
+            for entry, entry_id in todo:
+                text, facets = build_post(entry, hashtag)
+                client.send_post(text=text, facets=facets)
+                done.add(entry_id)
+                # On ne garde que les ids encore présents dans le flux
+                # pour que le cache ne grossisse pas indéfiniment.
+                cache[rss_url] = [i for i in all_ids if i in done]
+                save_cache(cache)
+                print(f"[{rss_url}] Publié :", entry.title)
         except Exception as e:
             print(f"[{rss_url}] Erreur : {e}")
 

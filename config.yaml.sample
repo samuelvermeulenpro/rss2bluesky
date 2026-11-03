@@ -1,10 +1,12 @@
 # Liste des flux RSS à surveiller.
 # Chaque entrée peut être une simple URL (hashtag par défaut)
-# ou un objet avec une URL et un hashtag propre au flux.
+# ou un objet avec une URL, un hashtag propre au flux et un nombre
+# d'items à publier (count, par défaut 1 : l'article le plus récent).
 feeds:
   - "https://url-flux-rss.com/"
   - url: "https://autre-flux-rss.com/feed"
     hashtag: "#AutreFlux"
+    count: 3
 
 bluesky:
   handle: "identifiant bluesky"
